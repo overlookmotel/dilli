@@ -13,10 +13,12 @@
   "bugs": {
     "url": "https://github.com/overlookmotel/dilli/issues"
   },
-  "dependencies": {},
+  "dependencies": {
+    "promise-methods": "^1.2.0"
+  },
   "devDependencies": {
     "@overlookmotel/eslint-config": "^2.1.0",
-    "@overlookmotel/eslint-config-jest": "^1.0.2",
+    "@overlookmotel/eslint-config-jest": "^1.1.0",
     "cross-env": "^5.2.0",
     "eslint": "^5.16.0",
     "eslint-config-airbnb-base": "^13.1.0",
@@ -24,7 +26,8 @@
     "eslint-plugin-eslint-comments": "^3.1.1",
     "eslint-plugin-import": "^2.16.0",
     "eslint-plugin-jest": "^22.4.1",
-    "jest": "^23.6.0"
+    "jest": "^23.6.0",
+    "jest-extended": "^0.11.1"
   },
   "keywords": [
     "worker",
