@@ -21,27 +21,17 @@ describe('startup/shutdown', () => {
 	function clearLog() {
 		log.length = 0;
 	}
+	function logger(obj) {
+		if (!obj.worker && ['Start requested', 'Starting', 'Started', 'Stop requested', 'Stopping', 'Stopped'].includes(obj.msg)) log.push(obj.msg);
+	}
 
 	beforeEach(() => {
 		log = [];
-		function logger(obj) {
-			if (!obj.worker) log.push(obj.msg);
-		}
 
-		dilli = new Dilli({logger});
-
-		class Worky extends Dilli.Worker {
-			static async start() {
-				await new Promise(resolve => setTimeout(resolve, 10));
-			}
-
-			static async stop() {
-				await new Promise(resolve => setTimeout(resolve, 10));
-			}
-		}
-		Worky.version = '0.0.0';
-
-		dilli.addWorker(Worky);
+		dilli = new Dilli({
+			logger,
+			connection: new Dilli.Connection()
+		});
 	});
 
 	describe('start()', () => {
