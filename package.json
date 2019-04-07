@@ -19,6 +19,7 @@
   "devDependencies": {
     "@overlookmotel/eslint-config": "^2.1.0",
     "@overlookmotel/eslint-config-jest": "^1.1.0",
+    "coveralls": "^3.0.3",
     "cross-env": "^5.2.0",
     "eslint": "^5.16.0",
     "eslint-config-airbnb-base": "^13.1.0",
