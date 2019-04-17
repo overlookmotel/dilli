@@ -6,65 +6,121 @@
 'use strict';
 
 // Modules
-const Dilli = require('../index'),
-	{STOPPED, STARTING, STARTED, STOPPING} = Dilli;
+const {defer} = require('promise-methods'),
+	Dilli = require('../index');
 
 // Init
-require('./utils');
+const {waitTick, avoidUnhandledRejection} = require('./utils');
 
 const spy = jest.fn;
 
 // Tests
 
 describe('startup/shutdown', () => {
-	let dilli, log;
-	function clearLog() {
-		log.length = 0;
+	let dilli, connection, journal,
+		connectionOpenDeferred, journalOpenDeferred;
+
+	function connectionOpenResolve() {
+		connectionOpenDeferred.resolve({lastMessageId: 0});
 	}
-	function logger(obj) {
-		if (!obj.worker && ['Start requested', 'Starting', 'Started', 'Stop requested', 'Stopping', 'Stopped'].includes(obj.msg)) log.push(obj.msg);
+	function journalOpenResolve() {
+		journalOpenDeferred.resolve({jobIds: []});
+	}
+	function openResolve() {
+		connectionOpenResolve();
+		journalOpenResolve();
 	}
 
 	beforeEach(() => {
-		log = [];
-
-		dilli = new Dilli({
-			logger,
-			connection: new Dilli.Connection()
+		connection = new Dilli.Connection();
+		connection.open = spy(() => {
+			connectionOpenDeferred = defer();
+			return connectionOpenDeferred.promise;
 		});
+
+		journal = new Dilli.Journal();
+		journal.open = spy(() => {
+			journalOpenDeferred = defer();
+			return journalOpenDeferred.promise;
+		});
+
+		dilli = new Dilli({serverId: 1, connection, journal});
 	});
 
 	describe('start()', () => {
-		it('sets state to STARTING', async () => {
+		it('opens connection and journal', async () => {
 			const p = dilli.start();
-			expect(dilli.state).toEqual(STARTING);
-			await p;
+			avoidUnhandledRejection(p);
+			expect(connection.open).toHaveBeenCalled();
+			expect(journal.open).toHaveBeenCalled();
 		});
 
-		it('sets state to STARTED after startup complete', async () => {
-			await dilli.start();
-			expect(dilli.state).toEqual(STARTED);
-			expect(log).toEqual(['Start requested', 'Starting', 'Started']);
+		it('awaits connection open before resolving', async () => {
+			let resolved = false;
+			const p = dilli.start().then(() => { resolved = true; });
+			avoidUnhandledRejection(p);
+
+			expect(resolved).toBe(false);
+
+			journalOpenResolve();
+			await waitTick();
+			expect(resolved).toBe(false);
+
+			connectionOpenResolve();
+			await waitTick();
+			expect(resolved).toBe(true);
+		});
+
+		it('awaits journal open before resolving', async () => {
+			let resolved = false;
+			const p = dilli.start().then(() => { resolved = true; });
+			avoidUnhandledRejection(p);
+
+			expect(resolved).toBe(false);
+
+			connectionOpenResolve();
+			await waitTick();
+			expect(resolved).toBe(false);
+
+			journalOpenResolve();
+			await waitTick();
+			expect(resolved).toBe(true);
 		});
 
 		it('if already starting, does nothing', async () => {
-			await Promise.all([
-				dilli.start(),
-				dilli.start()
-			]);
+			const p1 = dilli.start();
+			const p2 = dilli.start();
 
-			expect(dilli.state).toEqual(STARTED);
-			expect(log).toEqual(['Start requested', 'Starting', 'Start requested', 'Started']);
+			openResolve();
+			await Promise.all([p1, p2]);
+
+			expect(connection.open).toHaveBeenCalledTimes(1);
+			expect(journal.open).toHaveBeenCalledTimes(1);
+		});
+
+		it('if already starting, returns same promise', async () => {
+			const p1 = dilli.start();
+			const p2 = dilli.start();
+
+			expect(p1).toBe(p2);
+
+			openResolve();
+			await Promise.all([p1, p2]);
 		});
 
 		it('if already started, does nothing', async () => {
-			await dilli.start();
+			const p = dilli.start();
+			openResolve();
+			await p;
 			await dilli.start();
 
-			expect(dilli.state).toEqual(STARTED);
-			expect(log).toEqual(['Start requested', 'Starting', 'Started', 'Start requested']);
+			expect(connection.open).toHaveBeenCalledTimes(1);
+			expect(journal.open).toHaveBeenCalledTimes(1);
 		});
 
+		// TODO Write rest of tests
+
+		/*
 		it("if shutdown in progress, awaits it's completion before starting up again", async () => {
 			await dilli.start();
 			clearLog();
@@ -95,8 +151,12 @@ describe('startup/shutdown', () => {
 				['Stop requested', 'Stopping', 'Start requested', 'Stopped', 'Starting', 'Started']
 			);
 		});
+		*/
 	});
 
+	// TODO Write tests for `.stop()`
+
+	/*
 	describe('stop()', () => {
 		it('sets state to STOPPING', async () => {
 			await dilli.start();
@@ -164,4 +224,5 @@ describe('startup/shutdown', () => {
 			);
 		});
 	});
+	*/
 });
