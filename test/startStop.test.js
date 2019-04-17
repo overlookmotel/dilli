@@ -102,7 +102,7 @@ describe('startup/shutdown', () => {
 			const p1 = dilli.start();
 			const p2 = dilli.start();
 
-			expect(p1).toBe(p2);
+			expect(p2).toBe(p1);
 
 			openResolve();
 			await Promise.all([p1, p2]);
@@ -112,6 +112,7 @@ describe('startup/shutdown', () => {
 			const p = dilli.start();
 			openResolve();
 			await p;
+
 			await dilli.start();
 
 			expect(connection.open).toHaveBeenCalledTimes(1);
